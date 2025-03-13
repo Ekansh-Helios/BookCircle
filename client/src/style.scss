@@ -1,0 +1,120 @@
+.app {
+  height: 100vh;
+  // padding: 0 100px;
+  // display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+
+  .addHome {
+    padding: 12px;
+    margin-top: 20px;
+    cursor: pointer;
+    border: none;
+    background-color: teal;
+    color: white;
+    font-weight: bold;
+    border-radius: 7px;
+  }
+
+  h1 {
+    margin-bottom: 50px;
+  }
+
+  .books {
+    display: flex;
+    gap: 24px;
+
+    .book {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+
+      img {
+        width: 200px;
+        height: 300px;
+        object-fit: cover;
+        border-radius: 10px;
+      }
+
+      button {
+        padding: 9px 12px;
+        cursor: pointer;
+        border-radius: 6px;
+      }
+    }
+
+    .delete {
+      border: 1px solid rgb(245, 191, 191);
+      background-color: rgb(242, 100, 100);
+      color: white;
+    }
+
+    .update {
+      border: 1px solid rgb(204, 204, 243);
+      background-color: rgb(139, 139, 234);
+      color: white;
+    }
+  }
+
+  .form {
+    width: 20vw;
+    margin: 0 auto;
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+
+    input,
+    textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid gray;
+      border-radius: 8px;
+      box-sizing: border-box;
+      margin-bottom: 3%;
+    }
+
+    textarea {
+      resize: vertical;
+    }
+
+    button {
+      width: 100%;
+      padding: 10px;
+      background-color: teal;
+      color: white;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      margin: 5% 0;
+    }
+
+    button:disabled {
+      background-color: #ccc;
+    }
+
+    .error {
+      color: red;
+      font-size: 0.875em;
+      margin-top: 5px;
+    }
+  }
+}
