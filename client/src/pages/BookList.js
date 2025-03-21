@@ -1,9 +1,13 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 
-const BookList = ({ user }) => {
+const BookList = () => {
   const [books, setBooks] = useState([]);
-  const [requestMessage, setRequestMessage] = useState({});
+  const user = useSelector((state) => state.auth.userData);
+  const token = sessionStorage.getItem('authToken');
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchBooks();
@@ -11,83 +15,166 @@ const BookList = ({ user }) => {
 
   const fetchBooks = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/books");  // Fixed API URL
+      const response = await axios.get("http://localhost:5000/api/books", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setBooks(response.data);
     } catch (error) {
       console.error("Error fetching books:", error.response?.data || error.message);
     }
   };
 
-  const handleBorrow = (bookId) => {
-    console.log(`Borrowing book with ID: ${bookId}`);
+  const handleBorrow = async (e, bookId, ownerId) => {
+    e.stopPropagation(); // Prevent triggering row click
+    try {
+      const response = await axios.post(
+        "http://localhost:5000/api/transactions/borrow",
+        { bookId, ownerId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      alert(response.data.message || "Borrow request sent!");
+    } catch (error) {
+      console.error("Error borrowing book:", error.response?.data || error.message);
+      alert(error.response?.data.message || "Failed to borrow book");
+    }
   };
 
-  const handleRequest = (bookId) => {
-    console.log(`Requesting book with ID: ${bookId}, Message: ${requestMessage[bookId]}`);
+  const handleRequest = async (e, bookId) => {
+    e.stopPropagation(); // Prevent triggering row click
+    if (!user || !user.id) {
+      alert("User not logged in!");
+      return;
+    }
+    try {
+      const response = await axios.post(
+        "http://localhost:5000/api/transactions/request",
+        { bookId: bookId, userId: user.id },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      alert(response.data.message || "Request sent!");
+    } catch (error) {
+      console.error("Error requesting book:", error.response?.data || error.message);
+      alert(error.response?.data.message || "Failed to request book");
+    }
   };
 
-  const handleDelete = async (bookId) => {
+  const handleDelete = async (e, bookId) => {
+    e.stopPropagation(); // Prevent triggering row click
+    if (!user || user.userType !== "clubAdmin") {
+      alert("Unauthorized");
+      return;
+    }
     if (window.confirm("Are you sure you want to delete this book?")) {
       try {
-        await axios.delete(`http://localhost:5000/api/books/${bookId}`);
+        await axios.delete(`http://localhost:5000/api/books/${bookId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         setBooks(books.filter(book => book.id !== bookId));
-        console.log(`Deleted book with ID: ${bookId}`);
       } catch (error) {
         console.error("Error deleting book:", error.response?.data || error.message);
       }
     }
   };
 
+  const calculateAverageRating = (reviews) => {
+    if (!reviews || reviews.length === 0) return "No ratings";
+    const total = reviews.reduce((sum, review) => sum + review.rating, 0);
+    return `${(total / reviews.length).toFixed(1)} / 5`;
+  };
+
+  const handleBookClick = (bookId) => {
+    navigate(`/book-details/${bookId}`);
+  };
+
   return (
     <div className="container mt-5">
       <h2 className="mb-4">Book Listings</h2>
-      <div className="row">
-        {books.length > 0 ? (
-          books.map((book) => (
-            <div key={book.id} className="col-md-4 mb-4">
-              <div className="card h-100">
-                <img src={book.cover} alt={book.title} className="card-img-top" />
-                <div className="card-body">
-                  <h5 className="card-title">{book.title}</h5>
-                  <p className="card-text">Author: {book.author}</p>
-                  <p className="card-text">Status: {book.available ? "Available" : "Unavailable"}</p>
 
-                  {book.available ? (
-                    <button className="btn btn-primary" onClick={() => handleBorrow(book.id)}>Borrow</button>
-                  ) : (
-                    <div>
-                      <button className="btn btn-warning" onClick={() => handleRequest(book.id)}>Request</button>
-                      <input
-                        type="text"
-                        placeholder="Optional message"
-                        className="form-control mt-2"
-                        onChange={(e) => setRequestMessage({ ...requestMessage, [book.id]: e.target.value })}
-                      />
-                    </div>
-                  )}
-
-                  <div className="mt-3">
-                    <h6>Reviews & Ratings</h6>
-                    {book.reviews?.length > 0 ? (
-                      book.reviews.map((review) => (
-                        <p key={review.id}><strong>{review.user}:</strong> {review.text} ⭐{review.rating}</p>
-                      ))
-                    ) : (
-                      <p>No reviews yet.</p>
-                    )}
-                  </div>
-
-                  {user?.role === "clubAdmin" && (
-                    <button className="btn btn-danger mt-3" onClick={() => handleDelete(book.id)}>Delete</button>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))
-        ) : (
-          <p>No books available.</p>
-        )}
+      <div className="row fw-bold border-bottom pb-2 mb-3">
+        <div className="col-md-1">Cover</div>
+        <div className="col-md-2">Title</div>
+        <div className="col-md-2">Author</div>
+        <div className="col-md-2">Genre</div>
+        <div className="col-md-1">Status</div>
+        <div className="col-md-2">Actions</div>
+        <div className="col-md-2">Ratings</div>
       </div>
+
+      {books.length > 0 ? (
+        books.map((book) => (
+          <div 
+            key={book.id} 
+            className="row align-items-center mb-3 border-bottom pb-2"
+            style={{ cursor: "pointer", backgroundColor: "#f9f9f9" }}
+            onClick={() => handleBookClick(book.id)}
+          >
+            {/* Cover */}
+            <div className="col-md-1">
+              <img
+                src={book.cover ? book.cover : "/default-cover.jpg"}
+                alt={book.title}
+                style={{ width: "90px", height: "120px", objectFit: "cover" }}
+                onError={(e) => { e.target.src = "/default-cover.jpg"; }}
+              />
+            </div>
+
+            {/* Title */}
+            <div className="col-md-2">
+              <strong>{book.title}</strong>
+            </div>
+
+            {/* Author */}
+            <div className="col-md-2">{book.author}</div>
+
+            {/* Genre */}
+            <div className="col-md-2">{book.genre}</div>
+
+            {/* Status */}
+            <div className="col-md-1">
+              <span
+                className={`badge ${book.status === "Available" ? "bg-success" : "bg-secondary"}`}
+              >
+                {book.status}
+              </span>
+            </div>
+
+            {/* Actions */}
+            <div className="col-md-2">
+              {book.status === "Available" ? (
+                <button 
+                  className="btn btn-sm btn-primary mb-1"
+                  onClick={(e) => handleBorrow(e, book.id, book.owner_id)}
+                >
+                  Borrow
+                </button>
+              ) : (
+                <button 
+                  className="btn btn-sm btn-warning mb-1"
+                  onClick={(e) => handleRequest(e, book.id)}
+                >
+                  Request
+                </button>
+              )}
+
+              {(user?.userType === "clubAdmin" || user.userType === "superAdmin") && (
+                <button 
+                  className="btn btn-sm btn-danger ms-3 mb-1"
+                  onClick={(e) => handleDelete(e, book.id)}
+                >
+                  Delete
+                </button>
+              )}
+            </div>
+
+            {/* Ratings */}
+            <div className="col-md-2">
+              <small>{calculateAverageRating(book.reviews)}</small>
+            </div>
+          </div>
+        ))
+      ) : (
+        <p>No books available.</p>
+      )}
     </div>
   );
 };

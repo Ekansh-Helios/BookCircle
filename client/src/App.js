@@ -7,9 +7,13 @@ import Header from "./pages/Login-SignUp/components/Header";
 // import Add from "./pages/Add";
 import BookAddition from "./pages/addBook";
 import MyBooksPage from "./pages/myBooks";
+import BookDetailPage from "./pages/bookDetail";
 import BookList from "./pages/BookList";
 import UserProfile from "./pages/Login-SignUp/pages/UserProfile";
 import LandingScreen from "./pages/Login-SignUp/pages/LandingScreen";
+import BorrowedBooksList from "./pages/borrowedBooks";
+import NotificationsPage from "./pages/notificationsPage";
+
 import Dashboard from "./pages/Dashboard/Dashboard";
 import ProtectedRoute from "./pages/Security/protectedRoute"; // Import the ProtectedRoute component
 
@@ -33,11 +37,13 @@ const App = () => {
             <Route path="/" element={<LandingScreen />} />
             <Route path="/login" element={<Login />} />
             <Route path="*" element={<NotFound />} />
+            <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/my-books" element={<ProtectedRoute><MyBooksPage /></ProtectedRoute>} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/add-book" element={<ProtectedRoute><BookAddition /></ProtectedRoute>} />
             <Route path="/books-list" element={<ProtectedRoute><BookList /></ProtectedRoute>} />
-            {/* <Route path="/add" element={<ProtectedRoute><Add /></ProtectedRoute>} /> */}
+            <Route path="/book-details/:bookId" element={<ProtectedRoute><BookDetailPage/></ProtectedRoute>} />
+            <Route path="/borrowed-books" element={<ProtectedRoute><BorrowedBooksList /></ProtectedRoute>} />
             <Route path="/userProfile" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
             <Route path="/clubList" element={<ProtectedRoute><ClubList /></ProtectedRoute>} />
             <Route path="/createClub" element={<ProtectedRoute><ClubCreation /></ProtectedRoute>} />

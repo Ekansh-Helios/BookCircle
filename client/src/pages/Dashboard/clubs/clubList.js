@@ -41,7 +41,15 @@ const ClubList = () => {
     }
   };
 
-  const handleToggleStatus = async (clubId) => {
+  const handleToggleStatus = async (clubId, currentStatus) => {
+    const confirmMessage = currentStatus === "Active"
+      ? "Are you sure you want to deactivate this club?"
+      : "Are you sure you want to reactivate this club?";
+
+    const isConfirmed = window.confirm(confirmMessage);
+
+    if (!isConfirmed) return;
+
     try {
       await axios.patch(`http://localhost:5000/api/clubs/${clubId}/status`);
       fetchClubs();
@@ -95,7 +103,7 @@ const ClubList = () => {
             <th>Location</th>
             <th>Central Location</th>
             <th>Contact Email</th>
-            <th>Total Members</th> {/* 🔹 New Column */}
+            <th>Total Members</th>
             <th>Status</th>
             <th>Actions</th>
           </tr>
@@ -107,19 +115,22 @@ const ClubList = () => {
               <td>{club.location}</td>
               <td>{club.centralLocation}</td>
               <td>{club.contactEmail}</td>
-              <td>{club.totalMembers}</td> {/* 🔹 Display Total Members */}
+              <td>{club.totalMembers}</td>
               <td>
                 <span className={`badge ${club.status === "Active" ? "bg-success" : "bg-danger"}`}>
                   {club.status}
                 </span>
               </td>
               <td>
-                <button className="btn btn-warning btn-sm me-2" onClick={() => navigate(`/update-club/${club.id}`)}>
+                <button
+                  className="btn btn-warning btn-sm me-2"
+                  onClick={() => navigate(`/update-club/${club.id}`)}
+                >
                   Update
                 </button>
                 <button
                   className={`btn btn-sm ${club.status === "Active" ? "btn-danger" : "btn-success"}`}
-                  onClick={() => handleToggleStatus(club.id)}
+                  onClick={() => handleToggleStatus(club.id, club.status)} // 🔹 Pass current status
                 >
                   {club.status === "Active" ? "Deactivate" : "Reactivate"}
                 </button>

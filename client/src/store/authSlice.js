@@ -27,13 +27,27 @@ export const loginUser = createAsyncThunk(
       const userData = userResponse.data.user;
       const clubId = userData.clubId || null; // Ensure clubId is stored safely
 
+      // Fetch club details if clubId is available
+      let clubName = null;
+      if (clubId) {
+        const clubResponse = await axios.get(
+          `${process.env.REACT_APP_API_BASE_URL}/clubs/${clubId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        clubName = clubResponse.data.Name;
+      }
+
       // Store user session details
       sessionStorage.setItem(
         "userData",
-        JSON.stringify({ isLoggedIn: true, userData, clubId })
+        JSON.stringify({ isLoggedIn: true, userData, clubId , clubName})
       );
 
-      return { ...userData, clubId }; // Return userData along with clubId
+      return { ...userData, clubId, clubName }; // Return userData along with clubId
     } catch (error) {
       return rejectWithValue(error.response?.data || "Login failed");
     }
@@ -46,6 +60,7 @@ const authSlice = createSlice({
     isLoggedIn: false,
     userData: null,
     clubId: null, // Store clubId separately
+    clubName: null, // Store clubName separately
     loading: false,
     error: null,
   },
@@ -54,6 +69,7 @@ const authSlice = createSlice({
       state.isLoggedIn = false;
       state.userData = null;
       state.clubId = null;
+      state.clubName = null;
       sessionStorage.clear();
     },
   },
@@ -67,6 +83,7 @@ const authSlice = createSlice({
         state.isLoggedIn = true;
         state.userData = action.payload;
         state.clubId = action.payload.clubId;
+        state.clubName = action.payload.clubName;
         state.loading = false;
         console.log("User Data in Slice:", action.payload); // Log userData
       })

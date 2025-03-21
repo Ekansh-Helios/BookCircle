@@ -8,9 +8,10 @@ import {
     createBook, 
     deleteBook, 
     updateBook, 
-    getUserBooks 
+    getUserBooks, 
+    getBookDetails
 } from '../controllers/bookController.js';
-import authenticateUser from '../middleware/authenticateUser.js'; // ✅ Import authentication middleware
+import {authenticateUser} from '../middleware/authenticateUser.js'; // ✅ Import authentication middleware
 
 // Define __dirname for ES module
 const __filename = fileURLToPath(import.meta.url);
@@ -21,7 +22,7 @@ const router = express.Router();
 // ✅ Configure Multer for image uploads
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, path.join(__dirname, '../../uploads')); // Ensure this directory exists
+        cb(null, path.join(__dirname, '../uploads')); // Ensure this directory exists
     },
     filename: (req, file, cb) => {
         cb(null, Date.now() + path.extname(file.originalname)); // Unique filename
@@ -32,8 +33,9 @@ const upload = multer({ storage });
 
 // ✅ Define routes
 router.get('/', getBooks);
-router.get('/:id', getBookById);
 router.get('/my-books', authenticateUser, getUserBooks); // ✅ New route for fetching user’s books
+// router.get('/:id', getBookById);
+router.get('/:bookId', getBookDetails);
 
 // ✅ Protected Routes (Requires authentication)
 router.post('/', authenticateUser, upload.single('cover'), createBook);

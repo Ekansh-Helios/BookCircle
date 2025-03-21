@@ -48,7 +48,7 @@ const Login = () => {
           sessionStorage.setItem("clubId", userData.clubId);
         }
 
-        navigate("/books"); // Redirect to books page
+        navigate("/books-list"); // Redirect to books page
       })
       .catch((err) => {
         toast.error(err || "Login failed");

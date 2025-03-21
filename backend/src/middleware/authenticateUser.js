@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET; // Load secret key from .env
 
-const authenticateUser = (req, res, next) => {
+export const authenticateUser = (req, res, next) => {
     // Get the token from request headers
     const token = req.headers.authorization?.split(' ')[1]; // Bearer <token>
 
@@ -23,4 +23,14 @@ const authenticateUser = (req, res, next) => {
     }
 };
 
-export default authenticateUser;
+
+
+export const authorizeAdmin = (req, res, next) => {
+    const userRole = req.user?.role; // Assuming role is added to user object after authentication
+  
+    if (userRole === 'Super Admin' || userRole === 'Club Admin') {
+      next(); // Authorized
+    } else {
+      return res.status(403).json({ error: 'Forbidden: Admin access required' });
+    }
+  };

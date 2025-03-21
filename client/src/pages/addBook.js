@@ -1,16 +1,21 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import axios from "axios";
 
 const BookAddition = () => {
   const navigate = useNavigate();
+
+  // Get clubId from Redux store
+  const clubId = useSelector((state) => state.auth.userData.clubId);
+
   const [bookData, setBookData] = useState({
     title: "",
     author: "",
     genre: "",
     description: "",
     book_condition: "New",
-    cover: null,  // Store the file object
+    cover: null,
   });
 
   const handleChange = (e) => {
@@ -23,7 +28,7 @@ const BookAddition = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     const formData = new FormData();
     formData.append("title", bookData.title);
     formData.append("author", bookData.author);
@@ -31,16 +36,24 @@ const BookAddition = () => {
     formData.append("description", bookData.description);
     formData.append("book_condition", bookData.book_condition);
     formData.append("cover", bookData.cover);
+    formData.append("clubId", clubId); // Add clubId
+
+    // 🔑 Get token from sessionStorage
+    const token = sessionStorage.getItem("authToken");
 
     try {
       const response = await axios.post("http://localhost:5000/api/books", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`, // Pass token here
+        },
       });
 
       console.log("Book added:", response.data);
-      navigate("/my-books"); // Redirect to My Books page after submission
+      navigate("/my-books"); // Redirect after submission
     } catch (error) {
-      console.error("Error adding book:", error);
+      console.error("Error adding book:", error.response?.data || error.message);
+      alert(error.response?.data?.message || "Error adding book");
     }
   };
 
