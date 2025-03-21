@@ -3,7 +3,8 @@ import {
   addReview, 
   getBookReviews, 
   editReview, 
-  approveReview 
+  approveReview,
+  getMyReviews 
 } from '../controllers/reviewsController.js';
 import { authenticateUser } from "../middleware/authenticateUser.js";
 
@@ -21,4 +22,5 @@ router.put('/edit/:reviewId', authenticateUser, editReview);
 // Approve a review (admin only)
 router.put('/approve/:reviewId', authenticateUser, approveReview);
 
+router.get("/my-reviews", authenticateUser, getMyReviews);
 export default router;

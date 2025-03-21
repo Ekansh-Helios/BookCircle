@@ -2,20 +2,31 @@ import {pool} from "../config/db.js";
 
 export const addReview = async (req, res) => {
     try {
-        const { book_id, rating, comment } = req.body;
+        const { transactionId, rating, review } = req.body;
         const user_id = req.user.id;
 
-        if (!rating || !book_id) {
-            return res.status(400).json({ error: "Rating and book ID are required." });
+        if (!rating || !transactionId) {
+            return res.status(400).json({ error: "Rating and transaction ID are required." });
         }
 
-        const q = `
-        INSERT INTO reviews (book_id, user_id, rating, comment, isApproved)
-        VALUES (?, ?, ?, ?, ?)
-      `;
-        const values = [book_id, user_id, rating, comment || '', true]; // Assuming auto-approved for now
+        // Step 1: Get the book_id using transactionId
+        const transactionQuery = `SELECT book_id FROM transactions WHERE id = ? AND borrower_id = ?`;
+        const [transactionResult] = await pool.query(transactionQuery, [transactionId, user_id]);
 
-        await pool.query(q, values);
+        if (transactionResult.length === 0) {
+            return res.status(404).json({ error: "Transaction not found or unauthorized." });
+        }
+
+        const book_id = transactionResult[0].book_id;
+
+        // Step 2: Insert review
+        const insertQuery = `
+            INSERT INTO reviews (book_id, user_id, rating, comment, isApproved)
+            VALUES (?, ?, ?, ?, ?)
+        `;
+        const values = [book_id, user_id, rating, review || '', true]; // Assuming auto-approved for now
+
+        await pool.query(insertQuery, values);
 
         res.status(201).json({ message: "Review added successfully." });
     } catch (err) {
@@ -23,6 +34,7 @@ export const addReview = async (req, res) => {
         res.status(500).json({ error: "Database error" });
     }
 };
+
 
 export const getBookReviews = async (req, res) => {
     try {
@@ -89,6 +101,27 @@ export const approveReview = async (req, res) => {
         res.status(200).json({ message: "Review approval updated." });
     } catch (err) {
         console.error("Error approving review:", err);
+        res.status(500).json({ error: "Database error" });
+    }
+};
+
+export const getMyReviews = async (req, res) => {
+    try {
+        const user_id = req.user.id;
+
+        const query = `
+            SELECT r.reviewId, r.book_id, b.title, b.author, r.rating, r.comment, r.date, r.edited_at, r.isApproved, b.cover
+            FROM reviews r
+            JOIN books b ON r.book_id = b.id
+            WHERE r.user_id = ?
+            ORDER BY r.date DESC
+        `;
+
+        const [result] = await pool.query(query, [user_id]);
+
+        res.status(200).json(result);
+    } catch (err) {
+        console.error("Error fetching user's reviews:", err);
         res.status(500).json({ error: "Database error" });
     }
 };

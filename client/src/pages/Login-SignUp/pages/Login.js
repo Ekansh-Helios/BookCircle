@@ -84,7 +84,10 @@ const Login = () => {
         <button type="submit" className="login-btn" disabled={loading}>
           {loading ? "Logging in..." : "Login"}
         </button>
-        {error && <span className="error-message">{error}</span>}
+        {typeof error === 'object' && error?.message && (
+  <span className="error-message">{error.message}</span>
+)}
+
       </form>
 
       <p style={{ textAlign: "center" }}>

@@ -97,6 +97,10 @@ const Header = () => {
               </Link>
             </li>
 
+            <li>
+              <Link to="/profile" className={location.pathname === '/profile' ? 'active' : ''}><i className="fas fa-user"></i></Link>
+            </li>
+
             {/* Logout */}
             <li>
               <i className="fas fa-sign-out-alt logo-icon" style={{ cursor: 'pointer' }} onClick={logout}></i>

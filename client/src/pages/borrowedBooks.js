@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useSelector } from "react-redux";
+import { Modal, Button, Form } from "react-bootstrap";
 
 const BorrowedBooksList = () => {
   const [borrowedBooks, setBorrowedBooks] = useState([]);
@@ -8,7 +9,11 @@ const BorrowedBooksList = () => {
   const [activeTab, setActiveTab] = useState("borrowed");
   const [error, setError] = useState("");
   const [requestsReceived, setRequestsReceived] = useState([]);
-
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false);
+  const [currentTransactionId, setCurrentTransactionId] = useState(null);
+  const [review, setReview] = useState("");
+  const [rating, setRating] = useState(0);
 
   const user = useSelector((state) => state.auth.userData);
   const token = sessionStorage.getItem("authToken");
@@ -20,7 +25,6 @@ const BorrowedBooksList = () => {
       fetchRequestsReceived();
     }
   }, [user]);
-
 
   const fetchRequestsReceived = async () => {
     try {
@@ -61,20 +65,59 @@ const BorrowedBooksList = () => {
     }
   };
 
-  const handleReturn = async (transactionId) => {
-    if (window.confirm("Are you sure you want to return this book?")) {
-      try {
-        const response = await axios.put(
-          `http://localhost:5000/api/transactions/return/${transactionId}`,
-          {},
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        alert(response.data.message || "Book returned successfully!");
-        fetchBorrowedBooks();
-      } catch (error) {
-        console.error("Error returning book:", error.response?.data || error.message);
-        alert("Failed to return the book.");
-      }
+  const handleReturn = (transactionId) => {
+    setCurrentTransactionId(transactionId);
+    setShowConfirmationModal(true);
+  };
+
+  const handleDirectReturn = async () => {
+    try {
+      // Proceed with returning the book
+      const response = await axios.put(
+        `http://localhost:5000/api/transactions/return/${currentTransactionId}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      alert(response.data.message || "Book returned successfully!");
+      fetchBorrowedBooks();
+      setShowConfirmationModal(false);
+      setCurrentTransactionId(null);
+    } catch (error) {
+      console.error("Error returning book:", error.response?.data || error.message);
+      alert("Failed to return the book.");
+    }
+  };
+
+  const handleReviewSubmit = async () => {
+    try {
+      // Submit review and rating
+      await axios.post(
+        `http://localhost:5000/api/reviews/add`,
+        {
+          transactionId: currentTransactionId,
+          review,
+          rating,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      // Proceed with returning the book
+      const response = await axios.put(
+        `http://localhost:5000/api/transactions/return/${currentTransactionId}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      alert(response.data.message || "Book returned successfully!");
+      fetchBorrowedBooks();
+      setShowReviewModal(false);
+      setReview("");
+      setRating(0);
+      setCurrentTransactionId(null);
+    } catch (error) {
+      console.error("Error submitting review or returning book:", error.response?.data || error.message);
+      alert("Failed to submit review or return the book.");
     }
   };
 
@@ -108,7 +151,6 @@ const BorrowedBooksList = () => {
     }
   };
 
-
   const renderStatusBadge = (status) => {
     let badgeClass = "bg-secondary";
     switch (status) {
@@ -139,35 +181,34 @@ const BorrowedBooksList = () => {
 
       {/* Tabs */}
       <ul className="nav nav-tabs mb-4">
-  <li className="nav-item">
-    <button
-      className={`nav-link d-flex align-items-center justify-content-between ${activeTab === "borrowed" ? "active" : ""}`}
-      onClick={() => setActiveTab("borrowed")}
-    >
-      <span>Borrowed Books</span>
-      <span className="badge bg-primary ms-2">{borrowedBooks.length}</span>
-    </button>
-  </li>
-  <li className="nav-item">
-    <button
-      className={`nav-link d-flex align-items-center justify-content-between ${activeTab === "requested" ? "active" : ""}`}
-      onClick={() => setActiveTab("requested")}
-    >
-      <span>Requested Books</span>
-      <span className="badge bg-primary ms-2">{requestedBooks.length}</span>
-    </button>
-  </li>
-  <li className="nav-item">
-    <button
-      className={`nav-link d-flex align-items-center justify-content-between ${activeTab === "received" ? "active" : ""}`}
-      onClick={() => setActiveTab("received")}
-    >
-      <span>Requests Received</span>
-      <span className="badge bg-primary ms-2">{requestsReceived.length}</span>
-    </button>
-  </li>
-</ul>
-
+        <li className="nav-item">
+          <button
+            className={`nav-link d-flex align-items-center justify-content-between ${activeTab === "borrowed" ? "active" : ""}`}
+            onClick={() => setActiveTab("borrowed")}
+          >
+            <span>Borrowed Books</span>
+            <span className="badge bg-primary ms-2">{borrowedBooks.length}</span>
+          </button>
+        </li>
+        <li className="nav-item">
+          <button
+            className={`nav-link d-flex align-items-center justify-content-between ${activeTab === "requested" ? "active" : ""}`}
+            onClick={() => setActiveTab("requested")}
+          >
+            <span>Requested Books</span>
+            <span className="badge bg-primary ms-2">{requestedBooks.length}</span>
+          </button>
+        </li>
+        <li className="nav-item">
+          <button
+            className={`nav-link d-flex align-items-center justify-content-between ${activeTab === "received" ? "active" : ""}`}
+            onClick={() => setActiveTab("received")}
+          >
+            <span>Requests Received</span>
+            <span className="badge bg-primary ms-2">{requestsReceived.length}</span>
+          </button>
+        </li>
+      </ul>
 
       {/* Borrowed Books */}
       {activeTab === "borrowed" && (
@@ -193,7 +234,6 @@ const BorrowedBooksList = () => {
                 <div className="col-md-3">
                   <div><strong>Borrowed On:</strong> {new Date(transaction.request_date).toLocaleDateString()}</div>
                   <div><strong>Due Date:</strong> {new Date(transaction.due_date).toLocaleDateString()}</div>
-                  {/* <div><strong>Due:</strong> {transaction.due_date ? transaction.due_date.split("T")[0] : "N/A"}</div> */}
                 </div>
                 <div className="col-md-2">
                   {transaction.status === "Approved" && (
@@ -292,6 +332,72 @@ const BorrowedBooksList = () => {
         </>
       )}
 
+      {/* Confirmation Modal */}
+      <Modal show={showConfirmationModal} onHide={() => setShowConfirmationModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Confirm Return</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>Have you read the book?</p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => {
+            setShowConfirmationModal(false);
+            handleDirectReturn();
+          }}>
+            No
+          </Button>
+          <Button variant="primary" onClick={() => {
+            setShowConfirmationModal(false);
+            setShowReviewModal(true);
+          }}>
+            Yes
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Review and Rating Modal */}
+      <Modal show={showReviewModal} onHide={() => setShowReviewModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Review and Rating</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form>
+            <Form.Group controlId="review">
+              <Form.Label>Review</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                value={review}
+                onChange={(e) => setReview(e.target.value)}
+              />
+            </Form.Group>
+            <Form.Group controlId="rating" className="mt-3">
+              <Form.Label>Rating</Form.Label>
+              <Form.Control
+                as="select"
+                value={rating}
+                onChange={(e) => setRating(e.target.value)}
+              >
+                <option value={0}>Select Rating</option>
+                <option value={1}>1 - Poor</option>
+                <option value={2}>2 - Fair</option>
+                <option value={3}>3 - Good</option>
+                <option value={4}>4 - Very Good</option>
+                <option value={5}>5 - Excellent</option>
+              </Form.Control>
+            </Form.Group>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowReviewModal(false)}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={handleReviewSubmit}>
+            Submit Review and Return
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 };

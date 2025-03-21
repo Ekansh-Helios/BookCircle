@@ -13,6 +13,9 @@ import UserProfile from "./pages/Login-SignUp/pages/UserProfile";
 import LandingScreen from "./pages/Login-SignUp/pages/LandingScreen";
 import BorrowedBooksList from "./pages/borrowedBooks";
 import NotificationsPage from "./pages/notificationsPage";
+import ProfilePage from "./pages/profilePage";
+import ResetPasswordPage from "./pages/Login-SignUp/pages/resetPassword";
+import MyReviewsPage from "./pages/myReviews";
 
 import Dashboard from "./pages/Dashboard/Dashboard";
 import ProtectedRoute from "./pages/Security/protectedRoute"; // Import the ProtectedRoute component
@@ -37,8 +40,11 @@ const App = () => {
             <Route path="/" element={<LandingScreen />} />
             <Route path="/login" element={<Login />} />
             <Route path="*" element={<NotFound />} />
-            <Route path="/notifications" element={<NotificationsPage />} />
+            <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+            <Route path="/reset-password" element={<ProtectedRoute><ResetPasswordPage /></ProtectedRoute>} />
             <Route path="/my-books" element={<ProtectedRoute><MyBooksPage /></ProtectedRoute>} />
+            <Route path="/my-reviews" element={<ProtectedRoute><MyReviewsPage /></ProtectedRoute>} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/add-book" element={<ProtectedRoute><BookAddition /></ProtectedRoute>} />
             <Route path="/books-list" element={<ProtectedRoute><BookList /></ProtectedRoute>} />

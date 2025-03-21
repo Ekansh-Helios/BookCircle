@@ -83,3 +83,54 @@ export const toggleUserStatus = async (req, res) => {
     res.status(500).json({ success: false, message: "Database error" });
   }
 };
+
+
+// Controller function to update user details
+export const updateUser = async(req,res)=> {
+  const userId = req.params.id; // Assuming req.user is set by auth middleware
+  const { name, email, mobile } = req.body;
+
+  try {
+    const [result] = await pool.query(
+      `UPDATE users SET name = ? ,email = ?, mobile = ?, UpdatedAt = CURRENT_TIMESTAMP WHERE id = ?`,
+      [name, email, mobile, userId]
+    );
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "User not found." });
+    }
+    return res.status(200).json({ message: "Profile updated successfully." });
+  } catch (error) {
+    console.error("Error updating profile:", error);
+    return res.status(500).json({ message: "Internal server error." });
+  }
+};
+
+// Reset Password Controller
+export const resetPassword = async (req, res) => {
+  const userId = req.params.id;
+  const { newPassword } = req.body;
+
+  if (!newPassword) {
+    return res.status(400).json({ message: "New password is required." });
+  }
+
+  try {
+    // Hash the new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password in DB
+    const updateQuery = "UPDATE users SET password = ?, UpdatedAt = NOW() WHERE id = ?";
+    const [result] = await pool.query(updateQuery, [hashedPassword, userId]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    return res.status(200).json({ message: "Password reset successful." });
+
+  } catch (err) {
+    console.error("Error in resetPassword:", err);
+    return res.status(500).json({ message: "Internal server error." });
+  }
+};
+
