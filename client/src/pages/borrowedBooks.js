@@ -2,9 +2,11 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useSelector } from "react-redux";
 import { Modal, Button, Form } from "react-bootstrap";
+import { set } from "date-fns";
 
 const BorrowedBooksList = () => {
   const [borrowedBooks, setBorrowedBooks] = useState([]);
+  const [returnedBooks, setReturnedBooks] = useState([]);
   const [requestedBooks, setRequestedBooks] = useState([]);
   const [activeTab, setActiveTab] = useState("borrowed");
   const [error, setError] = useState("");
@@ -45,7 +47,12 @@ const BorrowedBooksList = () => {
         `http://localhost:5000/api/transactions/borrowed/${user.id}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setBorrowedBooks(response.data);
+       // Ensure response is correctly structured
+       const { borrowedBooks = [], returnedBooks = [] } = response.data || {};
+        
+       // Always set arrays to prevent errors
+       setBorrowedBooks(Array.isArray(borrowedBooks) ? borrowedBooks : []);
+       setReturnedBooks(Array.isArray(returnedBooks) ? returnedBooks : []);
     } catch (error) {
       console.error("Error fetching borrowed books:", error.response?.data || error.message);
       setError("Failed to load borrowed books.");
@@ -58,7 +65,7 @@ const BorrowedBooksList = () => {
         `http://localhost:5000/api/transactions/requested/${user.id}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setRequestedBooks(response.data);
+       setRequestedBooks(response.data);
     } catch (error) {
       console.error("Error fetching requested books:", error.response?.data || error.message);
       setError("Failed to load requested books.");
@@ -212,46 +219,95 @@ const BorrowedBooksList = () => {
 
       {/* Borrowed Books */}
       {activeTab === "borrowed" && (
-        <>
-          {borrowedBooks.length > 0 ? (
-            borrowedBooks.map((transaction) => (
-              <div key={transaction.id} className="row align-items-center mb-3 border-bottom pb-2">
-                <div className="col-md-1">
-                  <img
-                    src={transaction.book.cover || "/default-cover.jpg"}
-                    alt={transaction.book.title}
-                    style={{ width: "50px", height: "70px", objectFit: "cover" }}
-                    onError={(e) => { e.target.src = "/default-cover.jpg"; }}
-                  />
-                </div>
-                <div className="col-md-4">
-                  <strong>{transaction.book.title}</strong>
-                  <div><small>Author: {transaction.book.author}</small></div>
-                </div>
-                <div className="col-md-2">
-                  {renderStatusBadge(transaction.status)}
-                </div>
-                <div className="col-md-3">
-                  <div><strong>Borrowed On:</strong> {new Date(transaction.request_date).toLocaleDateString()}</div>
-                  <div><strong>Due Date:</strong> {new Date(transaction.due_date).toLocaleDateString()}</div>
-                </div>
-                <div className="col-md-2">
-                  {transaction.status === "Approved" && (
-                    <button
-                      className="btn btn-sm btn-primary"
-                      onClick={() => handleReturn(transaction.transaction_id)}
-                    >
-                      Return
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))
-          ) : (
-            <p>No borrowed books found.</p>
-          )}
-        </>
-      )}
+  <>
+    {/* Currently Borrowed Books */}
+    <h5 className="mt-3">Currently Borrowed Books</h5>
+    {borrowedBooks.length === 0 ? (
+      <p>No active borrowed books.</p>
+    ) : (
+      borrowedBooks.map((transaction) => (
+        <div key={transaction.transaction_id} className="row align-items-center mb-3 p-2 border rounded shadow-sm">
+          {/* Book Cover */}
+          <div className="col-md-1">
+            <img
+              src={transaction.book.cover || "/default-cover.jpg"}
+              alt={transaction.book.title}
+              style={{ width: "50px", height: "70px", objectFit: "cover" }}
+              onError={(e) => { e.target.src = "/default-cover.jpg"; }}
+            />
+          </div>
+
+          {/* Book Details */}
+          <div className="col-md-4">
+            <strong>{transaction.book.title}</strong>
+            <div><small>Author: {transaction.book.author}</small></div>
+          </div>
+
+          {/* Status */}
+          <div className="col-md-2">
+            {renderStatusBadge(transaction.status)}
+          </div>
+
+          {/* Borrowed & Due Dates */}
+          <div className="col-md-3">
+            <div><strong>Borrowed On:</strong> {new Date(transaction.request_date).toLocaleDateString()}</div>
+            <div><strong>Due Date:</strong> {new Date(transaction.due_date).toLocaleDateString()}</div>
+          </div>
+
+          {/* Return Button */}
+          <div className="col-md-2">
+            <button
+              className="btn btn-sm btn-primary"
+              onClick={() => handleReturn(transaction.transaction_id)}
+            >
+              Return
+            </button>
+          </div>
+        </div>
+      ))
+    )}
+
+    {/* Returned Books */}
+    <h5 className="mt-4">Returned Books</h5>
+    {returnedBooks.length === 0 ? (
+      <p>No returned books yet.</p>
+    ) : (
+      returnedBooks.map((transaction) => (
+        <div key={transaction.transaction_id} className="row align-items-center mb-3 p-2 border rounded bg-light">
+          {/* Book Cover */}
+          <div className="col-md-1">
+            <img
+              src={transaction.book.cover || "/default-cover.jpg"}
+              alt={transaction.book.title}
+              style={{ width: "50px", height: "70px", objectFit: "cover" }}
+              onError={(e) => { e.target.src = "/default-cover.jpg"; }}
+            />
+          </div>
+
+          {/* Book Details */}
+          <div className="col-md-4">
+            <strong>{transaction.book.title}</strong>
+            <div><small>Author: {transaction.book.author}</small></div>
+          </div>
+
+          {/* Status */}
+          <div className="col-md-2">
+            {renderStatusBadge(transaction.status)}
+          </div>
+
+          {/* Borrowed & Returned Dates */}
+          <div className="col-md-3">
+            <div><strong>Borrowed On:</strong> {new Date(transaction.request_date).toLocaleDateString()}</div>
+            <div><strong>Returned On:</strong> {new Date(transaction.return_date).toLocaleDateString()}</div>
+          </div>
+        </div>
+      ))
+    )}
+  </>
+)}
+
+
+
 
       {/* Requested Books */}
       {activeTab === "requested" && (

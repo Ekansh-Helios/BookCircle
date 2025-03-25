@@ -82,6 +82,7 @@ const BookList = () => {
     return `${(total / reviews.length).toFixed(1)} / 5`;
   };
 
+
   const handleBookClick = (bookId) => {
     navigate(`/book-details/${bookId}`);
   };
@@ -102,8 +103,8 @@ const BookList = () => {
 
       {books.length > 0 ? (
         books.map((book) => (
-          <div 
-            key={book.id} 
+          <div
+            key={book.id}
             className="row align-items-center mb-3 border-bottom pb-2"
             style={{ cursor: "pointer", backgroundColor: "#f9f9f9" }}
             onClick={() => handleBookClick(book.id)}
@@ -141,14 +142,14 @@ const BookList = () => {
             {/* Actions */}
             <div className="col-md-2">
               {book.status === "Available" ? (
-                <button 
+                <button
                   className="btn btn-sm btn-primary mb-1"
                   onClick={(e) => handleBorrow(e, book.id, book.owner_id)}
                 >
                   Borrow
                 </button>
               ) : (
-                <button 
+                <button
                   className="btn btn-sm btn-warning mb-1"
                   onClick={(e) => handleRequest(e, book.id)}
                 >
@@ -157,7 +158,7 @@ const BookList = () => {
               )}
 
               {(user?.userType === "clubAdmin" || user.userType === "superAdmin") && (
-                <button 
+                <button
                   className="btn btn-sm btn-danger ms-3 mb-1"
                   onClick={(e) => handleDelete(e, book.id)}
                 >
@@ -167,9 +168,11 @@ const BookList = () => {
             </div>
 
             {/* Ratings */}
+            {/* Ratings */}
             <div className="col-md-2">
-              <small>{calculateAverageRating(book.reviews)}</small>
+              <small>{book.averageRating > 0 ? `${book.averageRating} / 5` : "No ratings"}</small>
             </div>
+
           </div>
         ))
       ) : (

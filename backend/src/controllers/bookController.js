@@ -4,26 +4,33 @@ import { createNotification } from '../utils/notificationHelper.js';
 
 // ✅ Get all books
 export const getBooks = async (req, res) => {
-  const q = `
-    SELECT b.*, 
-      CASE 
-        WHEN EXISTS (
-          SELECT 1 FROM transactions t 
-          WHERE t.book_id = b.id AND t.status = 'Approved'
-        ) THEN 'Unavailable'
-        ELSE 'Available'
-      END AS status
-    FROM books b
-  `;
+  const connection = await pool.getConnection();
 
   try {
-    const [data] = await pool.query(q);
-    res.json(data);
+    const booksQuery = `
+      SELECT b.*, 
+        CASE 
+          WHEN EXISTS (
+            SELECT 1 FROM transactions t 
+            WHERE t.book_id = b.id AND t.status = 'Approved'
+          ) THEN 'Unavailable'
+          ELSE 'Available'
+        END AS status,
+        COALESCE(ROUND((SELECT AVG(r.rating) FROM reviews r WHERE r.book_id = b.id), 1), 0) AS averageRating
+      FROM books b
+    `;
+
+    const [books] = await connection.query(booksQuery);
+
+    res.json(books);
   } catch (err) {
-    console.log(err);
+    console.error("Error fetching books:", err);
     res.status(500).json({ error: "Database error" });
+  } finally {
+    connection.release();
   }
 };
+
 
 
 // ✅ Get books added by the logged-in user
@@ -71,9 +78,11 @@ export const createBook = async (req, res) => {
   try {
     const userId = req.user.id;
     const uniqueId = await generateUniqueId();
+    const { title, author, genre, description, book_condition, clubId, cover } = req.body;
 
-    const { title, author, genre, description, book_condition, clubId } = req.body;
-    const cover = req.file ? `/uploads/${req.file.filename}` : null;
+    if (!cover) {
+      return res.status(400).json({ error: "Book cover image URL is required." });
+    }
 
     await connection.beginTransaction();
 
@@ -84,20 +93,24 @@ export const createBook = async (req, res) => {
     const values = [title, author, genre, description, book_condition, cover, uniqueId, userId, clubId];
     const [data] = await connection.query(q, values);
 
+    // Fetch club name
+    const [clubNameResult] = await connection.query(
+      `SELECT Name FROM clubs WHERE ClubID = ?`,
+      [clubId]
+    );
+    const clubName = clubNameResult[0]?.Name || "the club";
+
     // 1. Notify the user who added the book
     await createNotification(userId, `You have successfully added a new book "${title}".`);
 
-    // 2. Fetch all club members
+    // 2. Fetch all club members (excluding the book owner)
     const [clubMembers] = await connection.query(
-      `SELECT id FROM users WHERE clubId = ?`,
-      [clubId]
+      `SELECT id FROM users WHERE clubId = ? AND id != ?`,
+      [clubId, userId]
     );
 
-    // Notify each club member (excluding the user who added the book if needed)
     for (const member of clubMembers) {
-      if (member.id !== userId) {
-        await createNotification(member.id, `A new book "${title}" has been added to your club.`);
-      }
+      await createNotification(member.id, `A new book "${title}" has been added to your club "${clubName}".`);
     }
 
     // 3. Notify the Super Admin
@@ -105,22 +118,17 @@ export const createBook = async (req, res) => {
       `SELECT id FROM users WHERE userType = 'superAdmin' LIMIT 1`
     );
 
-    const [clubNameResult] = await connection.query(
-      `SELECT Name FROM clubs WHERE ClubID = ?`, [clubId]
-    );
-    const clubName = clubNameResult[0]?.Name || 'the club';
-    
-    console.log(clubName);
     if (superAdmin.length > 0) {
-      await createNotification(superAdmin[0].id, `A new book "${title}" has been added in the club "${clubName}".`);
+      await createNotification(superAdmin[0].id, `A new book "${title}" has been added to the club "${clubName}".`);
     }
 
     await connection.commit();
     res.status(201).json({ message: "Book added successfully", bookId: data.insertId });
+
   } catch (err) {
     await connection.rollback();
     console.error("Error adding book:", err);
-    res.status(500).json({ error: "Database error" });
+    res.status(500).json({ error: "An error occurred while adding the book. Please try again." });
   } finally {
     connection.release();
   }
@@ -167,13 +175,16 @@ export const deleteBook = async (req, res) => {
 };
 
 // For getting book details on Book Details page
+// For getting book details on Book Details page
 export const getBookDetails = async (req, res) => {
   const { bookId } = req.params;
   const connection = await pool.getConnection();
+
   try {
     // Fetch book details and club name
     const [bookDetails] = await connection.query(
-      `SELECT b.id, b.title, b.author, b.genre, b.description, b.owner_id, b.book_condition, b.cover, c.Name AS clubName
+      `SELECT b.id, b.title, b.author, b.genre, b.description, b.owner_id, 
+              b.book_condition, b.cover, c.Name AS clubName
        FROM books b
        JOIN clubs c ON b.clubId = c.ClubID
        WHERE b.id = ?`,
@@ -186,25 +197,26 @@ export const getBookDetails = async (req, res) => {
 
     const book = bookDetails[0];
 
-    // Determine availability
-    const [activeTransactions] = await connection.query(
+    // Determine book availability
+    const [[{ activeTransactions }]] = await connection.query(
       `SELECT COUNT(*) AS activeTransactions
        FROM transactions
        WHERE book_id = ? AND status IN ('Approved', 'Borrowed')`,
       [bookId]
     );
 
-    const availability = activeTransactions[0].activeTransactions === 0 ? "Available" : "Not Available";
+    const availability = activeTransactions === 0 ? "Available" : "Not Available";
 
-    // Calculate average rating
-    const [ratingData] = await connection.query(
+    // Fetch average rating safely
+    const [[ratingData]] = await connection.query(
       `SELECT AVG(rating) AS averageRating
        FROM reviews
        WHERE book_id = ?`,
       [bookId]
     );
 
-    const averageRating = ratingData[0].averageRating ? parseFloat(ratingData[0].averageRating.toFixed(2)) : null;
+    // Ensure averageRating is always a valid number
+    const averageRating = ratingData?.averageRating !== null ? Number(ratingData.averageRating).toFixed(1) : "0.0";
 
     // Fetch reviews
     const [reviews] = await connection.query(
@@ -222,8 +234,9 @@ export const getBookDetails = async (req, res) => {
       averageRating,
       reviews
     });
+
   } catch (err) {
-    console.error("Error fetching book details:", err);
+    console.error("❌ Error fetching book details:", err);
     res.status(500).json({ error: "Database error" });
   } finally {
     connection.release();

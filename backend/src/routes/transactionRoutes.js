@@ -11,7 +11,8 @@ import {
   rejectRequest,
   getBorrowedBooksByUser,
   requestBook,
-  returnBook
+  returnBook,
+  getSuccessfulTransactions
 } from '../controllers/transactionController.js';
 import { authenticateUser, authorizeAdmin } from '../middleware/authenticateUser.js';
 
@@ -47,6 +48,9 @@ router.post("/request", authenticateUser, requestBook);
 
 // Return book route
 router.put('/return/:transactionId', authenticateUser, returnBook);
+
+// Get all successful transactions for a club
+router.get('/successful/:clubId', getSuccessfulTransactions);
 
 // Update transaction status (Approve, Return, Cancel)
 // router.patch('/:id/status', authenticateUser, updateTransactionStatus);

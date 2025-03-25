@@ -283,23 +283,37 @@ export const rejectRequest = async (req, res) => {
 };
 
 
-// ✅ Get Borrowed Books for a User
+// ✅ Get Borrowed Books for a User (Borrowed on Top, Returned Below)
 export const getBorrowedBooksByUser = async (req, res) => {
     try {
         const userId = req.params.userId;
 
-        const q = `
+        // Query for currently borrowed books (status = 'Approved')
+        const borrowedQuery = `
         SELECT t.id AS transaction_id, t.status, t.request_date, t.due_date,
                b.id AS book_id, b.title, b.author, b.cover
         FROM transactions t
         INNER JOIN books b ON t.book_id = b.id
         WHERE t.borrower_id = ? AND t.status = 'Approved'
         ORDER BY t.request_date DESC
-      `;
+        `;
 
-        const [results] = await pool.query(q, [userId]);
+        // Query for returned books (status = 'Returned')
+        const returnedQuery = `
+        SELECT t.id AS transaction_id, t.status, t.request_date, t.return_date,
+               b.id AS book_id, b.title, b.author, b.cover
+        FROM transactions t
+        INNER JOIN books b ON t.book_id = b.id
+        WHERE t.borrower_id = ? AND t.status = 'Returned'
+        ORDER BY t.return_date DESC
+        `;
 
-        const borrowedBooks = results.map(row => ({
+        // Execute queries
+        const [borrowedResults] = await pool.query(borrowedQuery, [userId]);
+        const [returnedResults] = await pool.query(returnedQuery, [userId]);
+
+        // Format response
+        const borrowedBooks = borrowedResults.map(row => ({
             transaction_id: row.transaction_id,
             status: row.status,
             request_date: row.request_date,
@@ -312,12 +326,30 @@ export const getBorrowedBooksByUser = async (req, res) => {
             },
         }));
 
-        res.status(200).json(borrowedBooks);
+        const returnedBooks = returnedResults.map(row => ({
+            transaction_id: row.transaction_id,
+            status: row.status,
+            request_date: row.request_date,
+            return_date: row.return_date,
+            book: {
+                id: row.book_id,
+                title: row.title,
+                author: row.author,
+                cover: row.cover,
+            },
+        }));
+
+        res.status(200).json({
+            borrowedBooks,
+            returnedBooks
+        });
+
     } catch (err) {
         console.error("Error fetching borrowed books:", err);
         res.status(500).json({ error: "Database error" });
     }
 };
+
 
 
 // ✅ Handle Unavailable Book Request
@@ -383,3 +415,27 @@ export const returnBook = async (req, res) => {
         res.status(500).json({ message: "Database error while returning book." });
     }
 };
+
+
+export const getSuccessfulTransactions = async (req, res) => {
+    const { clubId } = req.params;
+    const connection = await pool.getConnection();
+  
+    try {
+      // Count transactions where the book was successfully borrowed and returned
+      const [result] = await connection.query(
+        `SELECT COUNT(*) AS totalSuccessfulTransactions
+         FROM transactions t
+         JOIN books b ON t.book_id = b.id
+         WHERE t.status = 'Returned' AND b.clubId = ?`,
+        [clubId]
+      );
+  
+      res.status(200).json({ totalSuccessfulTransactions: result[0].totalSuccessfulTransactions });
+    } catch (error) {
+      console.error("Error fetching successful transactions:", error);
+      res.status(500).json({ error: "Database error" });
+    } finally {
+      connection.release();
+    }
+  };
